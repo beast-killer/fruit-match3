@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff7e9">
+<title>水果消消乐 · 甜到冒泡</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍉</text></svg>">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    color-scheme: light;
+    --ink: #42271b;
+    --muted: #9a7765;
+    --coral: #ff6552;
+    --coral-deep: #e64d3a;
+    --orange: #ffa23f;
+    --mint: #42b878;
+    --cream: #fffaf1;
+    --board-size: clamp(280px, min(92vw, calc(100svh - 260px)), 600px);
+    --frame-pad: clamp(7px, 1.6vw, 11px);
+    --gap: clamp(3px, .55vw, 5px);
+    --board-radius: clamp(20px, 3.5vw, 30px);
+    --ease-out: cubic-bezier(.2, .8, .2, 1);
+    --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
+  }
+
+  html {
+    min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0;
+    overflow-x: hidden;
+    color: var(--ink);
+    background-color: #fff7e9;
+    background-image:
+      radial-gradient(circle at 8% 4%, rgba(255, 187, 89, .30), transparent 28%),
+      radial-gradient(circle at 94% 8%, rgba(255, 112, 124, .17), transparent 26%),
+      radial-gradient(circle at 88% 92%, rgba(74, 194, 143, .20), transparent 29%),
+      radial-gradient(circle at 7% 92%, rgba(164, 116, 255, .12), transparent 26%),
+      linear-gradient(155deg, #fffaf0 0%, #fff5e5 48%, #fff9f0 100%);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  button { font: inherit; }
+  button, [role="button"] { -webkit-tap-highlight-color: transparent; }
+  button:focus-visible {
+    outline: 3px solid #447cf4;
+    outline-offset: 3px;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .backdrop::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(111, 67, 36, .10) .75px, transparent .85px);
+    background-size: 22px 22px;
+    opacity: .5;
+    -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 0%, transparent 72%);
+    mask-image: radial-gradient(circle at 50% 48%, #000 0%, transparent 72%);
+  }
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .blob-a {
+    width: 46vw;
+    height: 46vw;
+    max-width: 680px;
+    max-height: 680px;
+    left: -17vw;
+    top: -16vw;
+    background: radial-gradient(circle, rgba(255, 194, 93, .25), rgba(255, 194, 93, 0) 68%);
+  }
+
+  .blob-b {
+    width: 38vw;
+    height: 38vw;
+    max-width: 570px;
+    max-height: 570px;
+    right: -15vw;
+    bottom: -14vw;
+    background: radial-gradient(circle, rgba(93, 208, 146, .21), rgba(93, 208, 146, 0) 68%);
+  }
+
+  .blob-c {
+    width: 25vw;
+    height: 25vw;
+    max-width: 360px;
+    max-height: 360px;
+    right: 12vw;
+    top: 42%;
+    background: radial-gradient(circle, rgba(255, 131, 171, .12), rgba(255, 131, 171, 0) 68%);
+  }
+
+  .bg-fruit {
+    position: absolute;
+    opacity: .105;
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    filter: saturate(.85);
+    --rot: -12deg;
+    animation: float-fruit 11s ease-in-out infinite alternate;
+    user-select: none;
+  }
+
+  .bg-fruit.one {
+    left: -16px;
+    bottom: 9vh;
+    font-size: clamp(72px, 10vw, 140px);
+    --rot: -16deg;
+    animation-delay: -3s;
+  }
+
+  .bg-fruit.two {
+    right: -10px;
+    top: 12vh;
+    font-size: clamp(68px, 9vw, 126px);
+    --rot: 13deg;
+    animation-delay: -7s;
+  }
+
+  .bg-fruit.three {
+    left: 8vw;
+    top: 4vh;
+    font-size: clamp(50px, 6vw, 88px);
+    --rot: 18deg;
+    animation-delay: -5s;
+  }
+
+  .bg-fruit.four {
+    right: 9vw;
+    bottom: 4vh;
+    font-size: clamp(48px, 6vw, 84px);
+    --rot: -20deg;
+    animation-delay: -1s;
+  }
+
+  @keyframes float-fruit {
+    from { transform: translateY(0) rotate(var(--rot)); }
+    to { transform: translateY(-16px) rotate(calc(var(--rot) + 6deg)); }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 660px);
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0 auto;
+    padding: clamp(12px, 2.2vh, 24px) clamp(10px, 2.8vw, 24px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(10px, 1.5vh, 15px);
+  }
+
+  /* ---------- Header ---------- */
+
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: clamp(9px, 1.6vw, 12px);
+    min-width: 0;
+  }
+
+  .brand-mark {
+    position: relative;
+    flex: 0 0 auto;
+    width: clamp(46px, 7vw, 56px);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 34% 42% 36% 40%;
+    background:
+      radial-gradient(circle at 32% 20%, rgba(255, 255, 255, .82), transparent 30%),
+      linear-gradient(145deg, #ffe47e, #ffb24e);
+    box-shadow:
+      0 5px 0 #e69a38,
+      0 12px 25px -8px rgba(255, 157, 53, .42),
+      inset 0 1px 0 rgba(255, 255, 255, .9);
+    transform: rotate(-4deg);
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: clamp(27px, 4.5vw, 35px);
+  }
+
+  .brand-mark::after {
+    content: "✦";
+    position: absolute;
+    top: -6px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #fff;
+    color: #ff8c45;
+    font-size: 11px;
+    box-shadow: 0 2px 7px rgba(139, 80, 33, .18);
+  }
+
+  .brand-copy { min-width: 0; }
+
+  .eyebrow {
+    margin: 0 0 2px;
+    color: #e9744b;
+    font-size: clamp(8px, 1.1vw, 9.5px);
+    font-weight: 900;
+    letter-spacing: .15em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(25px, 4.4vw, 36px);
+    font-weight: 900;
+    line-height: 1.07;
+    letter-spacing: -.055em;
+    white-space: nowrap;
+  }
+
+  h1 .accent {
+    color: var(--coral);
+    text-shadow: 0 2px 0 #ffe9c7;
+  }
+
+  .restart {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: 999px;
+    color: #7e5a47;
+    background: rgba(255, 255, 255, .74);
+    box-shadow:
+      0 3px 0 rgba(149, 94, 48, .10),
+      0 10px 24px -14px rgba(119, 70, 30, .35);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .16s var(--ease-out), background .16s ease, box-shadow .16s ease;
+  }
+
+  .restart:hover {
+    background: rgba(255, 255, 255, .94);
+    transform: translateY(-1px);
+  }
+
+  .restart:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(149, 94, 48, .10);
+  }
+
+  .restart-icon {
+    display: inline-block;
+    font-size: 17px;
+    line-height: 1;
+    transition: transform .35s var(--ease-out);
+  }
+
+  .restart:hover .restart-icon { transform: rotate(-110deg); }
+
+  /* ---------- Scoreboard ---------- */
+
+  .scoreboard {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1.06fr .94fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 1.5vw, 11px);
+    padding: clamp(9px, 1.35vh, 12px) clamp(11px, 2.4vw, 16px);
+    border: 1px solid rgba(255, 255, 255, .88);
+    border-radius: 18px;
+    box-shadow:
+      0 3px 0 rgba(160, 105, 60, .08),
+      0 12px 28px -20px rgba(121, 73, 34, .38);
+    transition: background .25s ease, border-color .25s ease;
+  }
+
+  .stat-card::after {
+    content: "";
+    position: absolute;
+    right: -20px;
+    top: -30px;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .score-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .93), rgba(255, 241, 210, .9));
+  }
+
+  .score-card::after { background: rgba(255, 178, 64, .11); }
+
+  .moves-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .93), rgba(222, 249, 232, .92));
+  }
+
+  .moves-card::after { background: rgba(70, 187, 119, .11); }
+
+  .moves-card.is-low {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(255, 227, 219, .94));
+    border-color: rgba(255, 122, 98, .35);
+  }
+
+  .stat-icon {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    width: clamp(31px, 4.4vw, 38px);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: #fff;
+  }
+
+  .score-card .stat-icon {
+    background: linear-gradient(145deg, #ffd25c, #ff9e36);
+    box-shadow: 0 3px 0 #e7952d, 0 7px 14px -7px rgba(226, 135, 24, .55);
+  }
+
+  .moves-card .stat-icon {
+    background: linear-gradient(145deg, #82dda7, #3cb87a);
+    box-shadow: 0 3px 0 #2e9e64, 0 7px 14px -7px rgba(43, 157, 97, .5);
+  }
+
+  .stat-icon svg {
+    width: 53%;
+    height: 53%;
+    display: block;
+  }
+
+  .stat-copy {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: clamp(10px, 1.35vw, 11.5px);
+    font-weight: 800;
+    letter-spacing: .03em;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .stat-value {
+    display: inline-block;
+    color: var(--ink);
+    font-size: clamp(22px, 3.6vw, 29px);
+    font-weight: 900;
+    line-height: 1.06;
+    letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums;
+    transform-origin: left center;
+  }
+
+  .score-card .stat-value { color: #e8543e; }
+  .moves-card .stat-value { color: #2c9760; }
+  .moves-card.is-low .stat-value { color: #e34f3d; }
+
+  .stat-value.bump {
+    animation: value-bump .36s var(--ease-bounce);
+  }
+
+  #moves {
+    display: inline-block;
+    transform-origin: center bottom;
+  }
+
+  #moves.bump {
+    animation: value-bump .36s var(--ease-bounce);
+  }
+
+  .stat-unit {
+    margin-left: 2px;
+    color: currentColor;
+    font-size: .52em;
+    font-weight: 800;
+  }
+
+  @keyframes value-bump {
+    0% { transform: translateY(0) scale(1); }
+    38% { transform: translateY(-3px) scale(1.18); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  /* ---------- Game area ---------- */
+
+  .game-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .board-card {
+    position: relative;
+    width: var(--board-size);
+    padding: var(--frame-pad);
+    border: 1px solid rgba(255, 255, 255, .92);
+    border-radius: var(--board-radius);
+    background:
+      linear-gradient(150deg, rgba(255, 255, 255, .62), transparent 38%),
+      linear-gradient(150deg, #fffdf7 0%, #fff2db 56%, #ffe9ca 100%);
+    box-shadow:
+      0 7px 0 #efc17f,
+      0 28px 50px -25px rgba(141, 79, 22, .46),
+      inset 0 1px 0 #fff;
+  }
+
+  .board-card::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--frame-pad) - 3px);
+    z-index: 0;
+    border: 1px dashed rgba(196, 132, 66, .13);
+    border-radius: calc(var(--board-radius) - var(--frame-pad) + 3px);
+    pointer-events: none;
+  }
+
+  .board {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: var(--gap);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .tile {
+    position: relative;
+    aspect-ratio: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: clamp(6px, calc(var(--board-size) * .018), 11px);
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 30% 18%, rgba(255, 255, 255, .95), transparent 43%),
+      linear-gradient(150deg, #ffffff 0%, var(--tint) 100%);
+    box-shadow:
+      inset 0 -2px 0 rgba(113, 70, 37, .06),
+      inset 0 1px 0 rgba(255, 255, 255, .9),
+      0 1px 2px rgba(113, 70, 37, .045);
+    cursor: pointer;
+    transform: translateZ(0);
+    transition: transform .16s var(--ease-out), box-shadow .16s ease, background-color .16s ease;
+  }
+
+  .tile[data-fruit="0"] { --tint: #ffe4df; --accent: #ff7866; }
+  .tile[data-fruit="1"] { --tint: #fff0d2; --accent: #ffa63c; }
+  .tile[data-fruit="2"] { --tint: #efe2ff; --accent: #9e78f4; }
+  .tile[data-fruit="3"] { --tint: #ffe1ed; --accent: #ff77a9; }
+  .tile[data-fruit="4"] { --tint: #e2f8dc; --accent: #5fc67b; }
+  .tile[data-fruit="5"] { --tint: #dff4fa; --accent: #5abed8; }
+
+  .fruit {
+    position: relative;
+    z-index: 1;
+    display: block;
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: clamp(18px, calc(var(--board-size) * .064), 38px);
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 1px rgba(105, 58, 24, .15));
+    transform-origin: 50% 55%;
+    transition: transform .16s var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    .tile:hover:not(.selected) {
+      z-index: 2;
+      transform: translateY(-2px);
+      box-shadow:
+        inset 0 -2px 0 rgba(113, 70, 37, .05),
+        0 4px 10px -3px rgba(113, 70, 37, .15);
+    }
+    .tile:hover:not(.selected) .fruit {
+      transform: scale(1.1) rotate(-3deg);
+    }
+  }
+
+  .tile:active:not(.selected) {
+    transform: scale(.94);
+  }
+
+  .tile.selected {
+    z-index: 5;
+    transform: translateY(-3px) scale(1.055);
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 6px var(--accent),
+      0 9px 16px -6px rgba(94, 53, 27, .25);
+  }
+
+  .tile.selected .fruit {
+    transform: scale(1.08) rotate(-3deg);
+  }
+
+  .tile.pop {
+    z-index: 7;
+    background: #fffdf7;
+  }
+
+  .tile.pop .fruit {
+    animation: fruit-pop .30s cubic-bezier(.3, .7, .45, 1) forwards;
+  }
+
+  .tile.pop::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 80%;
+    height: 80%;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: pop-ring .34s ease-out forwards;
+  }
+
+  .tile.swap .fruit {
+    animation: fruit-swap .18s var(--ease-out);
+  }
+
+  .tile.shake {
+    animation: tile-shake .38s cubic-bezier(.36, .07, .19, .97);
+  }
+
+  .tile.refill .fruit {
+    animation: fruit-drop .31s var(--ease-bounce) both;
+    animation-delay: var(--refill-delay, 0ms);
+  }
+
+  .board.dealing .fruit {
+    animation: fruit-in .48s var(--ease-bounce) both;
+    animation-delay: var(--deal-delay, 0ms);
+  }
+
+  .board.reshuffling .fruit {
+    animation: shuffle-wiggle .46s ease-in-out infinite alternate;
+    animation-delay: var(--shuffle-delay, 0ms);
+  }
+
+  @keyframes fruit-pop {
+    0% { opacity: 1; transform: scale(1) rotate(0); }
+    38% { opacity: 1; transform: scale(1.34) rotate(-6deg); filter: brightness(1.15) drop-shadow(0 3px 4px rgba(255, 176, 64, .35)); }
+    100% { opacity: 0; transform: scale(0) rotate(15deg); }
+  }
+
+  @keyframes pop-ring {
+    0% { opacity: .85; transform: translate(-50%, -50%) scale(.25); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+  }
+
+  @keyframes fruit-swap {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(.72); }
+  }
+
+  @keyframes tile-shake {
+    0%, 100% { transform: translateX(0); }
+    18% { transform: translateX(-4px) rotate(-1.5deg); }
+    38% { transform: translateX(4px) rotate(1.5deg); }
+    58% { transform: translateX(-3px); }
+    78% { transform: translateX(2px); }
+  }
+
+  @keyframes fruit-drop {
+    0% { opacity: 0; transform: translateY(-22%) scale(.35); }
+    65% { opacity: 1; transform: translateY(2%) scale(1.06); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes fruit-in {
+    0% { opacity: 0; transform: translateY(-12px) scale(.3) rotate(-8deg); }
+    70% { opacity: 1; transform: translateY(1px) scale(1.07) rotate(2deg); }
+    100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+  }
+
+  @keyframes shuffle-wiggle {
+    from { transform: rotate(-16deg) scale(.84); }
+    to { transform: rotate(16deg) scale(1.08); }
+  }
+
+  /* ---------- Floating score ---------- */
+
+  .score-pop {
+    position: absolute;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: score-float .86s var(--ease-out) forwards;
+  }
+
+  .score-pop strong {
+    padding: 3px 10px 4px;
+    border: 2px solid rgba(255, 255, 255, .92);
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff8b62, #ff5b4d);
+    box-shadow: 0 5px 14px -3px rgba(218, 74, 52, .36);
+    font-size: clamp(16px, calc(var(--board-size) * .042), 25px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 0 rgba(166, 46, 31, .22);
+  }
+
+  .score-pop .combo-tag {
+    padding: 2px 7px;
+    border: 1px solid rgba(255, 182, 92, .38);
+    border-radius: 999px;
+    color: #c35a30;
+    background: rgba(255, 250, 234, .94);
+    box-shadow: 0 3px 9px rgba(134, 71, 31, .12);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .04em;
+  }
+
+  @keyframes score-float {
+    0% { opacity: 0; transform: translate(-50%, -35%) scale(.68); }
+    18% { opacity: 1; transform: translate(-50%, -57%) scale(1.08); }
+    72% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -150%) scale(.98); }
+  }
+
+  /* ---------- Toast ---------- */
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--frame-pad) + 12px);
+    z-index: 60;
+    width: max-content;
+    max-width: calc(100% - 28px);
+    padding: 10px 16px;
+    border-radius: 14px;
+    color: #fff;
+    background: rgba(58, 34, 22, .94);
+    box-shadow: 0 12px 28px -10px rgba(70, 37, 18, .55);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.45;
+    letter-spacing: .01em;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(.96);
+    transition: opacity .2s ease, transform .25s var(--ease-out);
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+
+  .toast.warn { background: rgba(227, 76, 56, .96); }
+  .toast.success { background: rgba(43, 150, 94, .96); }
+
+  /* ---------- Game over ---------- */
+
+  .game-over {
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    border-radius: var(--board-radius);
+    background: rgba(255, 248, 236, .58);
+    -webkit-backdrop-filter: blur(7px) saturate(1.08);
+    backdrop-filter: blur(7px) saturate(1.08);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .28s ease, visibility .28s ease;
+  }
+
+  .game-over[hidden] { display: none; }
+
+  .game-over.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .over-card {
+    position: relative;
+    width: min(86%, 340px);
+    padding: 22px 22px 20px;
+    border: 1px solid rgba(255, 255, 255, .96);
+    border-radius: 26px;
+    background:
+      radial-gradient(circle at 90% 0%, rgba(255, 194, 90, .22), transparent 32%),
+      linear-gradient(165deg, #fffdf8, #fff0d5);
+    box-shadow:
+      0 6px 0 #eab970,
+      0 26px 60px -16px rgba(102, 58, 22, .36),
+      inset 0 1px 0 #fff;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(18px) scale(.94);
+    transition: opacity .24s ease, transform .4s var(--ease-bounce);
+  }
+
+  .game-over.show .over-card {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .over-emojis {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 7px;
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: clamp(25px, 5vw, 32px);
+    line-height: 1;
+  }
+
+  .over-emojis span:nth-child(1) { transform: rotate(-11deg) translateY(2px); }
+  .over-emojis span:nth-child(3) { transform: rotate(11deg) translateY(2px); }
+
+  .over-kicker {
+    margin: 0 0 4px;
+    color: #e9784e;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .18em;
+    line-height: 1.3;
+  }
+
+  .over-title {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(21px, 4.6vw, 25px);
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -.03em;
+  }
+
+  .over-label {
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+  }
+
+  .over-score {
+    display: block;
+    margin: 1px 0 0;
+    color: var(--coral);
+    font-size: clamp(44px, 10vw, 57px);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -.055em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 3px 0 #ffe3b2;
+  }
+
+  .best-line {
+    margin: 7px 0 16px;
+    min-height: 16px;
+    color: #a37c66;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .best-line b {
+    color: #8a6049;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .play-again {
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff934f, #ff5d49);
+    box-shadow:
+      0 5px 0 #d84c38,
+      0 14px 24px -10px rgba(219, 79, 55, .6);
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: transform .15s var(--ease-out), box-shadow .15s ease, filter .15s ease;
+  }
+
+  .play-again:hover {
+    filter: brightness(1.045);
+    transform: translateY(-1px);
+  }
+
+  .play-again:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #d84c38, 0 7px 14px -8px rgba(219, 79, 55, .55);
+  }
+
+  /* ---------- Footer hint ---------- */
+
+  .howto {
+    margin: 0;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+    color: #a17b67;
+    font-size: clamp(10px, 1.4vw, 11.5px);
+    font-weight: 650;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .howto .spark {
+    color: #f09b4d;
+    font-size: 10px;
+  }
+
+  .hint-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #d9b29c;
+  }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width: 520px) {
+    :root {
+      --frame-pad: 7px;
+      --gap: 3px;
+      --board-radius: 20px;
+    }
+
+    .app {
+      gap: 10px;
+      padding-top: 13px;
+      padding-bottom: 15px;
+    }
+
+    .hero { gap: 8px; }
+
+    .brand-mark {
+      width: 44px;
+      border-radius: 15px;
+    }
+
+    .brand-mark::after {
+      width: 17px;
+      height: 17px;
+      font-size: 9px;
+    }
+
+    .eyebrow {
+      font-size: 8px;
+      letter-spacing: .11em;
+    }
+
+    h1 {
+      font-size: clamp(23px, 6.8vw, 27px);
+      letter-spacing: -.06em;
+    }
+
+    .restart {
+      width: 40px;
+      height: 40px;
+      min-height: 40px;
+      padding: 0;
+      border-radius: 50%;
+    }
+
+    .restart-label { display: none; }
+
+    .scoreboard { gap: 8px; }
+
+    .stat-card {
+      border-radius: 15px;
+      padding: 8px 10px;
+      gap: 8px;
+    }
+
+    .stat-icon {
+      width: 30px;
+      border-radius: 10px;
+    }
+
+    .stat-label { font-size: 9.5px; }
+
+    .stat-value { font-size: clamp(21px, 6.3vw, 25px); }
+
+    .game-area { gap: 9px; }
+
+    .board-card { box-shadow: 0 5px 0 #efc17f, 0 22px 40px -24px rgba(141, 79, 22, .44), inset 0 1px 0 #fff; }
+
+    .toast {
+      top: calc(var(--frame-pad) + 8px);
+      padding: 8px 12px;
+      border-radius: 11px;
+      font-size: 11.5px;
+    }
+
+    .score-pop strong {
+      padding: 2px 8px 3px;
+      border-width: 1.5px;
+    }
+
+    .over-card {
+      width: min(88%, 310px);
+      padding: 19px 18px 18px;
+      border-radius: 22px;
+      box-shadow: 0 5px 0 #eab970, 0 22px 50px -16px rgba(102, 58, 22, .34), inset 0 1px 0 #fff;
+    }
+
+    .over-emojis { font-size: 25px; margin-bottom: 5px; }
+    .over-label { margin-top: 11px; }
+    .best-line { margin-bottom: 13px; }
+    .play-again { padding: 11px 14px; }
+  }
+
+  @media (max-width: 370px) {
+    h1 { font-size: 22px; }
+    .brand-mark { width: 40px; }
+    .eyebrow { font-size: 7.5px; }
+    .stat-label { font-size: 9px; }
+    .stat-card { padding: 8px; }
+    .stat-icon { width: 27px; border-radius: 9px; }
+    .stat-value { font-size: 20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="backdrop" aria-hidden="true">
+  <span class="blob blob-a"></span>
+  <span class="blob blob-b"></span>
+  <span class="blob blob-c"></span>
+  <span class="bg-fruit one">🍓</span>
+  <span class="bg-fruit two">🍊</span>
+  <span class="bg-fruit three">🍇</span>
+  <span class="bg-fruit four">🍉</span>
+</div>
+
+<div class="app">
+  <header class="hero">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🍉</div>
+      <div class="brand-copy">
+        <p class="eyebrow">10 × 10 · 水果派对</p>
+        <h1>水果<span class="accent">消消</span>乐</h1>
+      </div>
+    </div>
+    <button class="restart" id="restartBtn" type="button" aria-label="重新开始游戏">
+      <span class="restart-icon" aria-hidden="true">↻</span>
+      <span class="restart-label">重新开始</span>
+    </button>
+  </header>
+
+  <section class="scoreboard" aria-label="游戏状态">
+    <div class="stat-card score-card">
+      <span class="stat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2.4l2.85 5.77 6.37.93-4.61 4.49 1.09 6.35L12 17l-5.7 3.03 1.09-6.35-4.61-4.49 6.37-.93L12 2.4z"/>
+        </svg>
+      </span>
+      <div class="stat-copy">
+        <span class="stat-label">当前得分</span>
+        <strong class="stat-value" id="score">0</strong>
+      </div>
+    </div>
+
+    <div class="stat-card moves-card" id="movesCard">
+      <span class="stat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 3.5h11M6.5 20.5h11M8 3.5v3.2c0 1 .5 1.9 1.4 2.5L12 11l2.6-1.8c.9-.6 1.4-1.5 1.4-2.5V3.5M8 20.5v-3.2c0-1 .5-1.9 1.4-2.5L12 13l2.6 1.8c.9.6 1.4 1.5 1.4 2.5v3.2"/>
+        </svg>
+      </span>
+      <div class="stat-copy">
+        <span class="stat-label">剩余步数</span>
+        <strong class="stat-value"><span id="moves">30</span><span class="stat-unit">步</span></strong>
+      </div>
+    </div>
+  </section>
+
+  <main class="game-area">
+    <div class="board-card" id="boardCard">
+      <div class="board" id="board" role="group" aria-label="10乘10水果棋盘" aria-describedby="gameHint"></div>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <div class="game-over" id="gameOver" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle" hidden>
+        <div class="over-card">
+          <div class="over-emojis" aria-hidden="true"><span>🍓</span><span>🍊</span><span>🍇</span></div>
+          <p class="over-kicker">SWEET FINISH</p>
+          <h2 class="over-title" id="gameOverTitle">步数用尽啦！</h2>
+          <p class="over-label">本轮得分</p>
+          <strong class="over-score" id="finalScore">0</strong>
+          <p class="best-line" id="bestLine"></p>
+          <button class="play-again" id="playAgainBtn" type="button">再来一局 ↻</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="howto" id="gameHint">
+      <span class="spark" aria-hidden="true">✦</span>
+      点击或滑动交换相邻水果
+      <span class="hint-sep" aria-hidden="true"></span>
+      3 个以上连成一线即可消除
+    </p>
+  </main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const ROWS = 10;
+  const COLS = 10;
+  const START_MOVES = 30;
+  const BEST_KEY = 'fruit-match-best-v1';
+  const FRUITS = [
+    { emoji: '🍎', name: '苹果' },
+    { emoji: '🍊', name: '橘子' },
+    { emoji: '🍇', name: '葡萄' },
+    { emoji: '🍓', name: '草莓' },
+    { emoji: '🍉', name: '西瓜' },
+    { emoji: '🍒', name: '樱桃' }
+  ];
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DURATION = reduceMotion
+    ? { swap: 30, invalid: 150, pop: 80, refill: 60, shuffle: 260, deal: 220, gameOver: 40 }
+    : { swap: 160, invalid: 440, pop: 300, refill: 270, shuffle: 760, deal: 620, gameOver: 260 };
+
+  const numberFormat = new Intl.NumberFormat('zh-CN');
+
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const movesEl = document.getElementById('moves');
+  const movesCardEl = document.getElementById('movesCard');
+  const toastEl = document.getElementById('toast');
+  const gameOverEl = document.getElementById('gameOver');
+  const finalScoreEl = document.getElementById('finalScore');
+  const gameOverTitleEl = document.getElementById('gameOverTitle');
+  const bestLineEl = document.getElementById('bestLine');
+  const restartBtn = document.getElementById('restartBtn');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+
+  let board = [];
+  let tiles = [];
+  let score = 0;
+  let moves = START_MOVES;
+  let selected = null;
+  let busy = false;
+  let gameIsOver = false;
+  let gameId = 0;
+  let dragStart = null;
+  let suppressClickUntil = 0;
+  let toastTimer = 0;
+  let dealTimer = 0;
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const formatNumber = (value) => numberFormat.format(value);
+  const tileAt = (row, col) => tiles[row * COLS + col];
+
+  /* ---------- Board generation ---------- */
+
+  function randomFruit() {
+    return Math.floor(Math.random() * FRUITS.length);
+  }
+
+  function generateGridWithoutMatches() {
+    const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const banned = new Set();
+
+        if (col >= 2 && grid[row][col - 1] === grid[row][col - 2]) {
+          banned.add(grid[row][col - 1]);
+        }
+        if (row >= 2 && grid[row - 1][col] === grid[row - 2][col]) {
+          banned.add(grid[row - 1][col]);
+        }
+
+        const choices = [];
+        for (let fruit = 0; fruit < FRUITS.length; fruit++) {
+          if (!banned.has(fruit)) choices.push(fruit);
+        }
+
+        grid[row][col] = choices[Math.floor(Math.random() * choices.length)];
+      }
+    }
+
+    return grid;
+  }
+
+  function generatePlayableGrid() {
+    for (let attempt = 0; attempt < 1200; attempt++) {
+      const grid = generateGridWithoutMatches();
+      if (hasPossibleMove(grid)) return grid;
+    }
+
+    // 六种水果下几乎不会走到这里，兜底确保游戏仍能继续。
+    return generateGridWithoutMatches();
+  }
+
+  /* ---------- Match detection ---------- */
+
+  function findMatches(grid = board) {
+    const matched = new Set();
+
+    for (let row = 0; row < ROWS; row++) {
+      let start = 0;
+      for (let col = 1; col <= COLS; col++) {
+        const previous = grid[row][col - 1];
+        const current = col < COLS ? grid[row][col] : -1;
+
+        if (current !== previous) {
+          if (previous >= 0 && col - start >= 3) {
+            for (let index = start; index < col; index++) {
+              matched.add(row * COLS + index);
+            }
+          }
+          start = col;
+        }
+      }
+    }
+
+    for (let col = 0; col < COLS; col++) {
+      let start = 0;
+      for (let row = 1; row <= ROWS; row++) {
+        const previous = grid[row - 1][col];
+        const current = row < ROWS ? grid[row][col] : -1;
+
+        if (current !== previous) {
+          if (previous >= 0 && row - start >= 3) {
+            for (let index = start; index < row; index++) {
+              matched.add(index * COLS + col);
+            }
+          }
+          start = row;
+        }
+      }
+    }
+
+    return matched;
+  }
+
+  function hasMatchAt(grid, row, col) {
+    const fruit = grid[row][col];
+    if (fruit < 0) return false;
+
+    let horizontal = 1;
+    for (let c = col - 1; c >= 0 && grid[row][c] === fruit; c--) horizontal++;
+    for (let c = col + 1; c < COLS && grid[row][c] === fruit; c++) horizontal++;
+    if (horizontal >= 3) return true;
+
+    let vertical = 1;
+    for (let r = row - 1; r >= 0 && grid[r][col] === fruit; r--) vertical++;
+    for (let r = row + 1; r < ROWS && grid[r][col] === fruit; r++) vertical++;
+    return vertical >= 3;
+  }
+
+  function hasPossibleMove(grid = board) {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (col < COLS - 1) {
+          const temp = grid[row][col];
+          grid[row][col] = grid[row][col + 1];
+          grid[row][col + 1] = temp;
+
+          const possible = hasMatchAt(grid, row, col) || hasMatchAt(grid, row, col + 1);
+
+          const back = grid[row][col];
+          grid[row][col] = grid[row][col + 1];
+          grid[row][col + 1] = back;
+
+          if (possible) return true;
+        }
+
+        if (row < ROWS - 1) {
+          const temp = grid[row][col];
+          grid[row][col] = grid[row + 1][col];
+          grid[row + 1][col] = temp;
+
+          const possible = hasMatchAt(grid, row, col) || hasMatchAt(grid, row + 1, col);
+
+          const back = grid[row][col];
+          grid[row][col] = grid[row + 1][col];
+          grid[row + 1][col] = back;
+
+          if (possible) return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /* ---------- Rendering ---------- */
+
+  function buildTiles() {
+    const fragment = document.createDocumentFragment();
+    tiles = [];
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'tile';
+        tile.dataset.row = String(row);
+        tile.dataset.col = String(col);
+        tile.dataset.fruit = '0';
+        tile.style.setProperty('--deal-delay', `${(row + col) * 11}ms`);
+        tile.style.setProperty('--shuffle-delay', `${((row * 7 + col * 3) % 10) * 28}ms`);
+
+        const fruit = document.createElement('span');
+        fruit.className = 'fruit';
+        fruit.setAttribute('aria-hidden', 'true');
+
+        tile.append(fruit);
+        fragment.append(tile);
+        tiles.push(tile);
+      }
+    }
+
+    boardEl.replaceChildren(fragment);
+  }
+
+  function renderBoard() {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const tile = tileAt(row, col);
+        const value = board[row][col];
+        const fruit = FRUITS[value];
+
+        tile.dataset.fruit = String(value);
+        tile.firstElementChild.textContent = fruit.emoji;
+        tile.classList.remove('pop', 'refill', 'shake', 'swap');
+      }
+    }
+
+    syncSelection();
+  }
+
+  function syncSelection() {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const tile = tileAt(row, col);
+        const isSelected = Boolean(selected && selected.row === row && selected.col === col);
+        const fruit = FRUITS[board[row][col]];
+
+        tile.classList.toggle('selected', isSelected);
+        tile.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        tile.setAttribute(
+          'aria-label',
+          `第${row + 1}行第${col + 1}列，${fruit.name}${isSelected ? '，已选中' : ''}`
+        );
+      }
+    }
+  }
+
+  function syncHud({ animateScore = false, animateMoves = false } = {}) {
+    scoreEl.textContent = formatNumber(score);
+    movesEl.textContent = String(moves);
+    movesCardEl.classList.toggle('is-low', moves <= 5);
+
+    if (animateScore) retriggerAnimation(scoreEl, 'bump');
+    if (animateMoves) retriggerAnimation(movesEl, 'bump');
+  }
+
+  function retriggerAnimation(element, className) {
+    element.classList.remove(className);
+    void element.offsetWidth;
+    element.classList.add(className);
+  }
+
+  function setBusy(value) {
+    busy = value;
+    boardEl.setAttribute('aria-busy', value ? 'true' : 'false');
+  }
+
+  function clearSelection() {
+    selected = null;
+    syncSelection();
+  }
+
+  /* ---------- Effects ---------- */
+
+  function playDealAnimation(token) {
+    boardEl.classList.remove('dealing');
+    void boardEl.offsetWidth;
+    boardEl.classList.add('dealing');
+
+    clearTimeout(dealTimer);
+    dealTimer = window.setTimeout(() => {
+      if (token === gameId) boardEl.classList.remove('dealing');
+    }, DURATION.deal + 520);
+  }
+
+  function animateRefill(indices) {
+    void boardEl.offsetWidth;
+    indices.forEach((index) => {
+      const row = Math.floor(index / COLS);
+      const tile = tiles[index];
+      tile.style.setProperty('--refill-delay', `${row * 9}ms`);
+      tile.classList.add('refill');
+    });
+  }
+
+  function animateSwap(first, second) {
+    void boardEl.offsetWidth;
+    const a = tileAt(first.row, first.col);
+    const b = tileAt(second.row, second.col);
+    a.classList.add('swap');
+    b.classList.add('swap');
+  }
+
+  function animateInvalid(first, second) {
+    void boardEl.offsetWidth;
+    const a = tileAt(first.row, first.col);
+    const b = tileAt(second.row, second.col);
+    a.classList.add('shake');
+    b.classList.add('shake');
+  }
+
+  function showScorePop(matches, points, combo) {
+    const boardRect = boardEl.getBoundingClientRect();
+    let centerX = 0;
+    let centerY = 0;
+
+    matches.forEach((index) => {
+      const tile = tiles[index];
+      const rect = tile.getBoundingClientRect();
+      centerX += rect.left - boardRect.left + rect.width / 2;
+      centerY += rect.top - boardRect.top + rect.height / 2;
+    });
+
+    centerX /= matches.size;
+    centerY /= matches.size;
+
+    const pop = document.createElement('div');
+    pop.className = 'score-pop';
+    pop.style.left = `${centerX}px`;
+    pop.style.top = `${centerY}px`;
+    pop.setAttribute('aria-hidden', 'true');
+
+    if (combo > 1) {
+      const comboTag = document.createElement('span');
+      comboTag.className = 'combo-tag';
+      comboTag.textContent = `连击 ×${combo}`;
+      pop.append(comboTag);
+    }
+
+    const gain = document.createElement('strong');
+    gain.textContent = `+${formatNumber(points)}`;
+    pop.append(gain);
+
+    boardEl.append(pop);
+
+    window.setTimeout(() => pop.remove(), 1100);
+  }
+
+  function showToast(message, tone = '', autoHide = 0) {
+    clearTimeout(toastTimer);
+    toastEl.textContent = message;
+    toastEl.className = `toast show${tone ? ` ${tone}` : ''}`;
+
+    if (autoHide > 0) {
+      toastTimer = window.setTimeout(() => {
+        toastEl.classList.remove('show');
+      }, autoHide);
+    }
+  }
+
+  function hideToast() {
+    clearTimeout(toastTimer);
+    toastEl.classList.remove('show');
+  }
+
+  function readBestScore() {
+    try {
+      const value = Number(window.localStorage.getItem(BEST_KEY));
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  function saveBestScore(value) {
+    try {
+      window.localStorage.setItem(BEST_KEY, String(value));
+    } catch (error) {
+      // 本地文件或隐私模式下可能禁止存储，游戏本身不受影响。
+    }
+  }
+
+  /* ---------- Core game flow ---------- */
+
+  function swapValues(first, second) {
+    const temp = board[first.row][first.col];
+    board[first.row][first.col] = board[second.row][second.col];
+    board[second.row][second.col] = temp;
+  }
+
+  function areAdjacent(first, second) {
+    return Math.abs(first.row - second.row) + Math.abs(first.col - second.col) === 1;
+  }
+
+  function startNewGame() {
+    const token = ++gameId;
+
+    clearTimeout(dealTimer);
+    hideToast();
+
+    gameIsOver = false;
+    selected = null;
+    dragStart = null;
+    suppressClickUntil = 0;
+    score = 0;
+    moves = START_MOVES;
+
+    board = generatePlayableGrid();
+    buildTiles();
+    renderBoard();
+    syncHud();
+
+    gameOverEl.classList.remove('show');
+    gameOverEl.hidden = true;
+    gameOverEl.setAttribute('aria-hidden', 'true');
+
+    boardEl.classList.remove('reshuffling', 'dealing');
+    playDealAnimation(token);
+    setBusy(false);
+  }
+
+  function resolveBoard(token) {
+    let combo = 0;
+
+    return (async () => {
+      while (true) {
+        const matches = findMatches(board);
+        if (matches.size === 0) break;
+
+        combo++;
+        const points = matches.size * 10 * combo;
+
+        score += points;
+        syncHud({ animateScore: true });
+        matches.forEach((index) => tiles[index].classList.add('pop'));
+        showScorePop(matches, points, combo);
+
+        await wait(DURATION.pop);
+        if (token !== gameId) return combo;
+
+        const before = board.map((row) => row.slice());
+        matches.forEach((index) => {
+          board[Math.floor(index / COLS)][index % COLS] = -1;
+        });
+
+        const changed = new Set(matches);
+        collapseAndRefill(before, changed);
+
+        renderBoard();
+        animateRefill(changed);
+
+        await wait(DURATION.refill);
+        if (token !== gameId) return combo;
+      }
+
+      return combo;
+    })();
+  }
+
+  function collapseAndRefill(before, changed) {
+    for (let col = 0; col < COLS; col++) {
+      const survivors = [];
+
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (board[row][col] !== -1) survivors.push(board[row][col]);
+      }
+
+      let writeRow = ROWS - 1;
+      for (const value of survivors) {
+        board[writeRow][col] = value;
+        writeRow--;
+      }
+
+      while (writeRow >= 0) {
+        board[writeRow][col] = randomFruit();
+        writeRow--;
+      }
+    }
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (board[row][col] !== before[row][col]) {
+          changed.add(row * COLS + col);
+        }
+      }
+    }
+  }
+
+  async function trySwap(first, second) {
+    if (busy || gameIsOver || !areAdjacent(first, second)) return;
+
+    const token = gameId;
+    setBusy(true);
+    clearSelection();
+
+    swapValues(first, second);
+    renderBoard();
+    animateSwap(first, second);
+
+    await wait(DURATION.swap);
+    if (token !== gameId) return;
+
+    const matches = findMatches(board);
+
+    if (matches.size === 0) {
+      swapValues(first, second);
+      renderBoard();
+      animateInvalid(first, second);
+
+      await wait(DURATION.invalid);
+      if (token !== gameId) return;
+
+      setBusy(false);
+      return;
+    }
+
+    moves = Math.max(0, moves - 1);
+    syncHud({ animateMoves: true });
+
+    await resolveBoard(token);
+    if (token !== gameId) return;
+
+    if (moves <= 0) {
+      await finishGame(token);
+      return;
+    }
+
+    if (!hasPossibleMove(board)) {
+      await reshuffleBoard(token);
+      if (token !== gameId) return;
+    }
+
+    setBusy(false);
+  }
+
+  async function reshuffleBoard(token) {
+    if (token !== gameId) return;
+
+    clearSelection();
+    setBusy(true);
+    showToast('没有可用步数，自动重新洗牌中…', 'warn');
+
+    boardEl.classList.add('reshuffling');
+    await wait(DURATION.shuffle);
+    if (token !== gameId) return;
+
+    board = generatePlayableGrid();
+    boardEl.classList.remove('reshuffling');
+    renderBoard();
+    playDealAnimation(token);
+
+    await wait(DURATION.deal);
+    if (token !== gameId) return;
+
+    showToast('重新洗牌完成，继续加油！', 'success', 1500);
+    setBusy(false);
+  }
+
+  async function finishGame(token) {
+    if (token !== gameId) return;
+
+    const previousBest = readBestScore();
+    const isRecord = score > previousBest;
+
+    if (isRecord) saveBestScore(score);
+
+    gameIsOver = true;
+    clearSelection();
+
+    await wait(DURATION.gameOver);
+    if (token !== gameId) return;
+
+    finalScoreEl.textContent = formatNumber(score);
+    gameOverTitleEl.textContent = isRecord ? '新纪录，太甜啦！' : '步数用尽啦！';
+    bestLineEl.textContent = isRecord
+      ? '刷新最高分，今天也是水果达人！'
+      : `历史最高分 · ${formatNumber(Math.max(previousBest, score))}`;
+
+    gameOverEl.hidden = false;
+    gameOverEl.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      if (token !== gameId) return;
+      gameOverEl.classList.add('show');
+      playAgainBtn.focus({ preventScroll: true });
+    });
+
+    setBusy(false);
+  }
+
+  /* ---------- Player input ---------- */
+
+  function handleTileClick(row, col) {
+    if (busy || gameIsOver) return;
+
+    const picked = { row, col };
+
+    if (!selected) {
+      selected = picked;
+      syncSelection();
+      return;
+    }
+
+    if (selected.row === row && selected.col === col) {
+      clearSelection();
+      return;
+    }
+
+    if (areAdjacent(selected, picked)) {
+      const first = selected;
+      selected = null;
+      syncSelection();
+      trySwap(first, picked);
+      return;
+    }
+
+    selected = picked;
+    syncSelection();
+  }
+
+  boardEl.addEventListener('click', (event) => {
+    if (performance.now() < suppressClickUntil) return;
+
+    const tile = event.target.closest('.tile');
+    if (!tile || !boardEl.contains(tile)) return;
+
+    handleTileClick(Number(tile.dataset.row), Number(tile.dataset.col));
+  });
+
+  boardEl.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (busy || gameIsOver) return;
+
+    const tile = event.target.closest('.tile');
+    if (!tile || !boardEl.contains(tile)) return;
+
+    dragStart = {
+      row: Number(tile.dataset.row),
+      col: Number(tile.dataset.col),
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId
+    };
+  });
+
+  boardEl.addEventListener('pointerup', (event) => {
+    const start = dragStart;
+    dragStart = null;
+
+    if (!start || start.pointerId !== event.pointerId) return;
+    if (busy || gameIsOver) return;
+
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+
+    if (Math.hypot(dx, dy) < 18) return;
+
+    const horizontal = Math.abs(dx) > Math.abs(dy);
+    const row = start.row + (horizontal ? 0 : Math.sign(dy));
+    const col = start.col + (horizontal ? Math.sign(dx) : 0);
+
+    suppressClickUntil = performance.now() + 320;
+
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+
+    trySwap({ row: start.row, col: start.col }, { row, col });
+  });
+
+  boardEl.addEventListener('pointercancel', () => {
+    dragStart = null;
+  });
+
+  restartBtn.addEventListener('click', startNewGame);
+  playAgainBtn.addEventListener('click', startNewGame);
+
+  startNewGame();
+})();
+</script>
+</body>
+</html>
